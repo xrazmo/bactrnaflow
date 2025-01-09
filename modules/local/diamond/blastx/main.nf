@@ -8,7 +8,7 @@ process DIAMOND_BLASTX {
 
     input:
     tuple val(meta) , path(fasta)
-    tuple val(meta2), path(db)
+    path(db)
     val out_ext
     val blast_columns
 

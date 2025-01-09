@@ -1,8 +1,7 @@
 process PROKKA {
     tag "${meta.id}"
     label 'process_low'
-
-    //conda "${moduleDir}/environment.yml"
+    
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/3a/3af46b047c8fe84112adeaecf300878217c629b97f111f923ecf327656ddd141/data' :
         'community.wave.seqera.io/library/prokka_openjdk:10546cadeef11472' }"
@@ -11,6 +10,7 @@ process PROKKA {
     tuple val(meta), path(fasta)
     path proteins
     path prodigal_tf
+    val output_dir
 
     output:
     tuple val(meta), path("${prefix}/*.gff"), emit: gff
@@ -26,6 +26,8 @@ process PROKKA {
     tuple val(meta), path("${prefix}/*.txt"), emit: txt
     tuple val(meta), path("${prefix}/*.tsv"), emit: tsv
     path "versions.yml" , emit: versions
+
+    publishDir "${output_dir}", mode: 'copy'
 
     when:
     task.ext.when == null || task.ext.when

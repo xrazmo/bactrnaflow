@@ -6,30 +6,32 @@ params.fq_dir=""
 params.output=""
 params.contig_dir=""
 params.prodigal_tf="$baseDir/assets/Escherichia_coli.trn"
-params.assets_dir = ""
+params.dmnd_dir = "$baseDir/assets/dmnd"
 
 include {FASTQC} from "$baseDir/modules/nf-core/fastqc/main"
 include {TRIMMOMATIC} from "$baseDir/modules/nf-core/trimmomatic/main"
 include {STAR_GENOMEGENERATE} from "$baseDir/modules/nf-core/star/genomegenerate/main"
 include {STAR_ALIGN} from "$baseDir/modules/nf-core/star/align/main"
-include {SALMON_QUANT} from "$baseDir/modules/nf-core/salmon/quant/main"
 include {SUBREAD_FEATURECOUNTS} from "$baseDir/modules/nf-core/subread/featurecounts/main"
 
 include {PROKKA} from "$baseDir/modules/local/prokka/main"
-include {ROARY} from "$baseDir/modules/local/roary/main"
+// include {ROARY} from "$baseDir/modules/local/roary/main"
 include {DIAMOND_BLASTX} from "$baseDir/modules/local/diamond/blastx/main"
 
-workflow ref_prep{
+workflow PrepRef{
 
-    ref_ch = Channel.fromPath("${params.contig_dir}/*.gz").map{it->[[id:it.simpleName],it]}
-    PROKKA(ref_ch.combine(Channel.fromPath(params.prodigal_tf)),"${params.output}/prokka")
+    ref_contigs_ch = Channel.fromPath("${params.contig_dir}/*.gz").map{it->[[id:it.simpleName],it]}
+   
+    PROKKA(ref_contigs_ch,[],params.prodigal_tf,"${params.output}/prokka")
+   
     //ROARY(PROKKA.out.gff.map{it->it[1]}.flatten().collect(),"${params.output}/roary")
+    // orf_ch = Channel.fromPath("${params.output}/prokka/*/*.ffn").map{it->[[id:it.simpleName],it]}
+   
 
-    orf_ch = Channel.fromPath("${params.output}/prokka/*/*.ffn").map{it->[[id:it.simpleName],it]}
-    dmnd_ch = Channel.fromPath("${params.assets_dir}/dmnd/*.dmnd")
+    dmnd_ch = Channel.fromPath("${params.dmnd_dir}/*.dmnd")
     def diamond_cols = "qseqid sseqid pident qcovhsp scovhsp mismatch gaps evalue bitscore length qlen slen qstart qend sstart send stitle"
-
-    orf_ch.combine(dmnd_ch).combine(Channel.from('txt')).combine(Channel.from(tuple(diamond_cols)))
+    
+    PROKKA.out.ffn.combine(dmnd_ch).combine(Channel.from('txt')).combine(Channel.from(tuple(diamond_cols)))
                     .map{it -> [[id:it[0].id+"__"+it[2].simpleName],it[1],it[2],it[3],it[4]]}
                     .multiMap {it -> fasta: tuple(it[0],it[1])
                                     db: it[2]
@@ -37,7 +39,7 @@ workflow ref_prep{
                                     col: it[4]}
                     .set{diaParam}
     
-
+    
     DIAMOND_BLASTX(diaParam.fasta,diaParam.db,diaParam.ext,diaParam.col)
     DIAMOND_BLASTX.out.txt.map{it-> it[1]}.flatten().collectFile(storeDir:"${params.output}/prokka/extra_annotation")                
 }
