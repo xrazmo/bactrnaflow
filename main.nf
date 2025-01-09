@@ -15,6 +15,7 @@ include {STAR_ALIGN} from "$baseDir/modules/nf-core/star/align/main"
 include {SUBREAD_FEATURECOUNTS} from "$baseDir/modules/nf-core/subread/featurecounts/main"
 
 include {PROKKA} from "$baseDir/modules/local/prokka/main"
+include {GFFREAD} from "$baseDir/modules/nf-core/gffread/main"
 // include {ROARY} from "$baseDir/modules/local/roary/main"
 include {DIAMOND_BLASTX} from "$baseDir/modules/local/diamond/blastx/main"
 
@@ -23,7 +24,8 @@ workflow PrepRef{
     ref_contigs_ch = Channel.fromPath("${params.contig_dir}/*.gz").map{it->[[id:it.simpleName],it]}
    
     PROKKA(ref_contigs_ch,[],params.prodigal_tf,"${params.output}/prokka")
-   
+    GFFREAD(PROKKA.out.gff,[],"${params.output}/prokka")
+    
     //ROARY(PROKKA.out.gff.map{it->it[1]}.flatten().collect(),"${params.output}/roary")
     // orf_ch = Channel.fromPath("${params.output}/prokka/*/*.ffn").map{it->[[id:it.simpleName],it]}
    
@@ -47,7 +49,7 @@ workflow PrepRef{
 
 workflow {
 
-    fq_ch = Channel.fromFilePairs("${params.fq_dir}/*_{R1,R2}.fastq.gz")
+    fq_ch = Channel.fromFilePairs("${params.fq_dir}/*.{R1,R2}.raw.fastq.gz")
                     .map{it->[[id:it[0],single_end:false],it[1]]}
 
     ref_ch = Channel.fromFilePairs("${params.ref_dir}/*/*.{fna,gtf}")
@@ -57,36 +59,39 @@ workflow {
                                 fnas:[[id:it[0]],it[1][0]]
                             }
 
+    ref_ch.genomes.view()
+    fq_ch.view()
+    
     // CSV file linking Fastq files with their corresponding reference genomes    
     meta=Channel.fromPath(params.meta_csv)
                 .splitCsv(header:true)
                 .map{it->[[id:it.fq_id,single_end:false],[id:it.ref_id]]}                
 
-    FASTQC(fq_ch)
+    // FASTQC(fq_ch)
 
-    TRIMMOMATIC(fq_ch)
+    // TRIMMOMATIC(fq_ch)
 
-    STAR_GENOMEGENERATE(ref_ch.genomes)
+    // STAR_GENOMEGENERATE(ref_ch.genomes)
     
-    // creating a tuple for STAR_ALIGN [ids,PE-reads,genome index, gtf file]
+    // // creating a tuple for STAR_ALIGN [ids,PE-reads,genome index, gtf file]
      
-     ch1 = TRIMMOMATIC.out.trimmed_reads.join(meta).map{it->[it[2],it[0],it[1]]}
-     ch2 = ref_ch.gtfs.join(STAR_GENOMEGENERATE.out.index)
+    //  ch1 = TRIMMOMATIC.out.trimmed_reads.join(meta).map{it->[it[2],it[0],it[1]]}
+    //  ch2 = ref_ch.gtfs.join(STAR_GENOMEGENERATE.out.index)
 
-     star_input_ch = ch2.cross(ch1).map{it->[it[1][1]+['ref_id':it[0][0].id],it[1][2],it[0][2],it[0][1]]}
+    //  star_input_ch = ch2.cross(ch1).map{it->[it[1][1]+['ref_id':it[0][0].id],it[1][2],it[0][2],it[0][1]]}
         
    
-    STAR_ALIGN(star_input_ch,false,'','')
+    // STAR_ALIGN(star_input_ch,false,'','')
 
 
-    fcount_input_ch = ref_ch.gtfs.cross(STAR_ALIGN.out.bam
-                 .map{it->[[id:it[0].ref_id],it[0],it[1]]}).map{it->[it[1][1],it[1][2],it[0][1]]}
+    // fcount_input_ch = ref_ch.gtfs.cross(STAR_ALIGN.out.bam
+    //              .map{it->[[id:it[0].ref_id],it[0],it[1]]}).map{it->[it[1][1],it[1][2],it[0][1]]}
 
      
     
-    SUBREAD_FEATURECOUNTS(fcount_input_ch)
+    // SUBREAD_FEATURECOUNTS(fcount_input_ch)
 
-    FASTQC.out.html.map{it->it[1]}.flatten().collectFile(storeDir:"${params.output}/fastqc")
-    SUBREAD_FEATURECOUNTS.out.counts.map{it->it[1]}.flatten().collectFile(storeDir:"${params.output}/feature_count")
-    SUBREAD_FEATURECOUNTS.out.summary.map{it->it[1]}.flatten().collectFile(storeDir:"${params.output}/feature_count")
+    // FASTQC.out.html.map{it->it[1]}.flatten().collectFile(storeDir:"${params.output}/fastqc")
+    // SUBREAD_FEATURECOUNTS.out.counts.map{it->it[1]}.flatten().collectFile(storeDir:"${params.output}/feature_count")
+    // SUBREAD_FEATURECOUNTS.out.summary.map{it->it[1]}.flatten().collectFile(storeDir:"${params.output}/feature_count")
 }
