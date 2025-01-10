@@ -14,6 +14,11 @@ include {STAR_GENOMEGENERATE} from "$baseDir/modules/nf-core/star/genomegenerate
 include {STAR_ALIGN} from "$baseDir/modules/nf-core/star/align/main"
 include {SUBREAD_FEATURECOUNTS} from "$baseDir/modules/nf-core/subread/featurecounts/main"
 
+include {SAMTOOLS_SORT} from "$baseDir/modules/nf-core/samtools/sort/main"
+include {SAMTOOLS_INDEX} from "$baseDir/modules/nf-core/samtools/index/main"
+
+include {BEDTOOLS_GENOMECOV} from "$baseDir/modules/local/bedtools/genomecov/main"
+
 include {PROKKA} from "$baseDir/modules/local/prokka/main"
 include {GFFREAD} from "$baseDir/modules/nf-core/gffread/main"
 // include {ROARY} from "$baseDir/modules/local/roary/main"
@@ -58,8 +63,6 @@ workflow {
                                 gtfs: [[id:it[0]],it[1][1]]
                                 fnas:[[id:it[0]],it[1][0]]
                             }
-
-    ref_ch.genomes.view()
     
     
     // CSV file linking Fastq files with their corresponding reference genomes    
@@ -91,7 +94,13 @@ workflow {
     
     SUBREAD_FEATURECOUNTS(fcount_input_ch)
 
+    SAMTOOLS_SORT(STAR_ALIGN.out.bam)
+    SAMTOOLS_INDEX(SAMTOOLS_SORT.out.bam)
+    indexed_bam = SAMTOOLS_SORT.out.bam.merge(SAMTOOLS_INDEX.out.bai).map{it-> [it[0],it[1],it[3]]}
+    BEDTOOLS_GENOMECOV(indexed_bam,"txt")
+    
     FASTQC.out.html.map{it->it[1]}.flatten().collectFile(storeDir:"${params.output}/fastqc")
     SUBREAD_FEATURECOUNTS.out.counts.map{it->it[1]}.flatten().collectFile(storeDir:"${params.output}/feature_count")
     SUBREAD_FEATURECOUNTS.out.summary.map{it->it[1]}.flatten().collectFile(storeDir:"${params.output}/feature_count")
+    BEDTOOLS_GENOMECOV.out.genomecov.map{it->it[1]}.flatten().collectFile(storeDir:"${params.output}/genome_coverage")
 }
