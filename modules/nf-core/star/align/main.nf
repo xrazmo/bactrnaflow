@@ -7,9 +7,7 @@ process STAR_ALIGN {
         'community.wave.seqera.io/library/htslib_samtools_star_gawk:311d422a50e6d829' }"
 
     input:
-    tuple val(meta), path(reads, stageAs: "input*/*")
-    tuple val(meta2), path(index)
-    tuple val(meta3), path(gtf)
+    tuple val(meta), path(reads, stageAs: "input*/*"),path(index),path(gtf)
     val star_ignore_sjdbgtf
     val seq_platform
     val seq_center

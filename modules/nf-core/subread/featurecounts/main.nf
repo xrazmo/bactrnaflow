@@ -22,20 +22,13 @@ process SUBREAD_FEATURECOUNTS {
     def prefix = task.ext.prefix ?: "${meta.id}"
     def paired_end = meta.single_end ? '' : '-p'
 
-    def strandedness = 0
-    if (meta.strandedness == 'forward') {
-        strandedness = 1
-    }
-    else if (meta.strandedness == 'reverse') {
-        strandedness = 2
-    }
+    
     """
     featureCounts \\
         ${args} \\
         ${paired_end} \\
         -T ${task.cpus} \\
         -a ${annotation} \\
-        -s ${strandedness} \\
         -o ${prefix}.featureCounts.tsv \\
         ${bams.join(' ')}
 

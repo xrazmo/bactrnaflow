@@ -1,5 +1,5 @@
 process STAR_GENOMEGENERATE {
-    tag "$fasta"
+    tag "$meta.id"
     label 'process_high'
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
@@ -7,8 +7,7 @@ process STAR_GENOMEGENERATE {
         'community.wave.seqera.io/library/htslib_samtools_star_gawk:311d422a50e6d829' }"
 
     input:
-    tuple val(meta), path(fasta)
-    tuple val(meta2), path(gtf)
+    tuple val(meta), path(fasta), path(gtf)
 
     output:
     tuple val(meta), path("star")  , emit: index
